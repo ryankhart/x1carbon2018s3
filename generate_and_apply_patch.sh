@@ -42,7 +42,7 @@ echo "[*] Attempting to install required tools"
 
 # If on Debian-based distro...
 if [ -x "$(which apt-get)" ]; then
-    sudo apt-get -y install acpica-tools cpio
+    sudo apt-get -y install cpio
 
 # If on Arch-based distro...
 elif [ -x "$(which pacman)" ]; then
