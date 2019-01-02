@@ -6,11 +6,59 @@ BOOT=${1:-/boot}
 IRFS_HOOK="/etc/initramfs-tools/hooks/acpi_override.sh"
 cd `mktemp -d`
 
-# Make sure we have required tools on systems with apt
-if [ -x $(which apt-get) ]; then
-	echo "[*] Installing required tools"
-	sudo apt-get -y install acpica-tools cpio
+###
+# If the tested version of iasl is not currently installed...
+if [ "$(iasl -v | grep -c 20181031)" -eq 0 ]; then
+ 
+ echo "[*] Attempting to install required tools to build iasl"
+ 
+ # Build a newer version of iasl
+ # If on Debian-based distro...
+ if [ -x "$(which apt-get)" ]; then
+     sudo apt-get -y install bison flex
+ # If on Arch-based distro...
+ elif [ -x "$(which pacman)" ]; then
+     sudo pacman -S bison flex
+ else
+     echo "Unable to automatically download and install bison or flex"
+     echo "Manual install needed"
+     exit 1
+ fi
+
+ echo "[*] Upgrading IASL..."
+ wget https://acpica.org/sites/acpica/files/acpica-unix2-20181031.tar.gz 
+ tar -zxf acpica-unix2-20181031.tar.gz
+ cd acpica-unix2-20181031
+ make clean
+ make iasl || { echo 'ERROR: Failed to build IASL' ; exit 1; }
+ sudo make install || { echo 'ERROR: Failed to install new version of IASL' ; exit 1; }
+ cd ..
 fi
+###
+
+###
+# Make sure we have required tools on systems with apt
+echo "[*] Attempting to install required tools"
+
+# If on Debian-based distro...
+if [ -x "$(which apt-get)" ]; then
+    sudo apt-get -y install cpio
+
+# If on Arch-based distro...
+elif [ -x "$(which pacman)" ]; then
+    echo "[*] Installing Yay to be able to download AUR packages"
+    if ![ -x "$(which git)" ]; then
+        sudo pacman -S git
+    fi
+    if ![ -x "$(which yay)" ]; then
+        git clone https://aur.archlinux.org/yay.git
+        cd yay
+        makepkg -si
+    fi
+    echo "Installing cpio"
+    yay -Syu cpio
+fi
+###
 
 # extract dsdt
 echo "[*] Dumping DSDT"
